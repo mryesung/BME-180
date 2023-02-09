@@ -29,5 +29,5 @@ void Arduino::Delay()
 
 std::string Arduino::ReadData()
 {
-	return std::string();
+	return std::string("");
 }
