@@ -1,9 +1,18 @@
 #include "Arduino.h"
+#include <atlstr.h>
 
 Arduino::Arduino(const uint32_t PortNumber)
-	:bConnect(false), delayTime(20)
+	:bConnect(false), hSerial(nullptr)
 {
-	//this->hSerial = CreateFileA()
+	/*this->hSerial = CreateFile("\\\\.\\COM" + CString(PortNumber),
+		GENERIC_READ | GENERIC_WRITE,
+		0,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);*/
+
+	
 }
 
 Arduino::~Arduino()
@@ -19,12 +28,6 @@ Arduino::~Arduino()
 bool Arduino::IsConnected()
 {
 	return bConnect;
-}
-
-void Arduino::Delay()
-{
-	Sleep(delayTime);
-	return;
 }
 
 std::string Arduino::ReadData()

@@ -13,6 +13,13 @@ Lead Programmer, Hardware Specialist
 ### Ilho Moon
 Creative Director, Project Coordinator
 
+## Project Mentors
+### Dr. Daniel W. Shrey
+Physician Mentor, Children's Hospital of Orange County
+
+### Dr. Michael Chu
+Engineering Mentor, CEO Makani Science
+
 ## Project Description
 ### Project Name: Respiratory Monitoring Patch for Newborns under Intensive Care
 This project
