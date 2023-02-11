@@ -30,8 +30,7 @@ This repository includes the codes used in Respiratory Monitoring Patch for Newb
 The main goal of this code is to connect the device with Arduino in a wireless environment to save the measured sensor resistance
 in a .csv file and preprocess the data for the later research to find the correlation between the respiratory rate and EEG signal.
 
-### Main.cpp
+### Acknowledgement
+The code is created with the help of
+https://playground.arduino.cc/Interfacing/CPPWindows/
 
-### Arduino.cpp
-
-### Arduino.h
