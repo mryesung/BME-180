@@ -94,5 +94,7 @@ bool Arduino::IsConnected()
 
 const std::string Arduino::ReadData()
 {
+	//ClearCommError(this->hSerial,)
+
 	return std::string("");
 }
