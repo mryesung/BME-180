@@ -1,26 +1,38 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[14]:
-
-
-#import required modules
 import serial
 from datetime import datetime
 import platform
 import time
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
-get_ipython().run_line_magic('matplotlib', 'tk')
+class RealTimePlot:
+    def animate(self, i, plotdata, ser, savedata):
+        #require arduino to analogRead
+        ser.write(b'w')
 
+        #get the Rsensor value in float
+        SerialData = float(ser.readline().decode('utf-8'))
 
-# In[15]:
+        #save the Rsensor value in both plotdata list and savedata list
+        savedata.append([SerialData, datetime.now().strftime("%H:%M:%S.%f")])
+        plotdata.append(SerialData)
 
+        #Fix the list size to certain value
+        plotdata = plotdata[-50:]
+
+        #clear last data frame
+        ax.clear()
+
+        #plot new data frame
+        self.getPlotFormat()
+        ax.plot(plotdata)
+
+    def getPlotFormat(self):
+        ax.set_ylim([0,100]) #change to 2,13 for strain sensor
+        ax.set_ylabel('Rsensor')
 
 #set serial connection
-
 OS = platform.system()
 
 if OS == 'Windows':
@@ -30,110 +42,44 @@ elif OS == 'Darwin':
 else:
     print("Not supported OS")
 
-
-print("Type in your COM port Number")
+print("Type in your Port Number")
 print("ex) if COM3, type in 3")
 PortName = PortBase + input()
 BaudRate = 9600
 
 Arduino = serial.Serial(PortName, BaudRate)
 
+#get File Name
 
-# In[16]:
-
-
-#to create exe file
-
-#convert to .py
-#pip install nbconvert
-#jupyter nbconvert --to script name.ipynb
-
-#convert to .exe
-#pip install pyinstaller
-#pyinstaller name.py
-
-
-# In[17]:
-
-
-#create csv file
 print("Type in the desired name of the .csv data file")
 print("ex) 0001")
-print("if there is a csv file with same, the original file will be replaced!")
+print("If there is a csv file with same name, the original file will be replaced!")
 FileName = input() + ".csv"
 
+#close the plot when the user wants to
+print("You may close the plot window to end the program and save the data")
+print("You will need to change the cell format of Time to 'hh:mm:ss.000'")
 
-# In[18]:
+#data to save in .csv file
+dataSave = []
 
+#real time plotting
+dataPlot = []
 
-#read data from arduino serial monitor and save in list of data
-data = np.array([])
+fig = plt.figure()
+ax = fig.add_subplot(111)
 
-print("How much minutes will you record the data?")
-seconds = float(input()) * 60
+plot_object = RealTimePlot()
 
-#delayTime is in seconds
-#follwing is sampling frequency of 10
-delayTime = 0.1
+ani = animation.FuncAnimation(fig, plot_object.animate, frames = 100, fargs=(dataPlot, Arduino, dataSave), interval = 50, repeat = True)
 
+plt.show()
 
-# In[6]:
-
-
-plt.ion()
-
-fig, ax = plt.subplots(figsize = (10, 8))
-line, = ax.plot(data)
-
-plt.ylabel('Rsensor')
-
-
-# In[7]:
-
-
-while seconds > 0:
-    #Arduino will print the Rsensor value in the Serial Monitor
-    #only when python script requires to do so by printing 'w'
-    Arduino.write(b'w')
-    
-    SerialData = float(Arduino.readline().decode('utf-8'))
-    data = np.append(data, [SerialData, datetime.now().strftime("%H : %M : %S . %f")])
-    
-    line.set_ydata(data[:,1])
-    fig.canvas.draw()
-    fig.canvas.flush_events()
-    
-    time.sleep(delayTime)
-    seconds -= delayTime
-
-
-# In[ ]:
-
-
-#import numpy if we need additional mathematical calculations
-
-
-# In[ ]:
-
-
-#write data to the csv file
+#save data to .csv file
 columnNames = ['Rsensor', 'Time']
 
-dataFile = pd.DataFrame(data, columns = columnNames)
+dataFile = pd.DataFrame(dataSave, columns = columnNames)
 dataFile.to_csv(FileName, index = False)
 
-
-# In[13]:
-
-
-#disconnect the Arduino
+#close the serial connection
 Arduino.close()
-
-print("You will need to change the cell format to 'hh:mm:ss.000'")
-
-
-# In[ ]:
-
-
-
-
