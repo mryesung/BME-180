@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 #ignore build file
 *.exe
+
+#ignore jupyter notebook checkpoints
+*.ipynb
