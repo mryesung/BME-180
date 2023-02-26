@@ -5,81 +5,139 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from threading import Thread
+import struct
 
 class RealTimePlot:
-    def animate(self, i, plotdata, ser, savedata):
-        #require arduino to analogRead
-        ser.write(b'w')
+    def __init__(self, PortName, FileName, fig):
+        self.fileName = FileName
+        self.baudRate = 9600
 
-        #get the Rsensor value in float
-        SerialData = float(ser.readline().decode('utf-8'))
+        self.isConnected = False
+        self.isReceiving = False
+        #connect to serial
+        try:
+            self.ser = serial.Serial(PortName, self.baudRate)
+            self.isConnected = True
+        except:
+            print("Failed to connect with the serial port")
 
+        #list to store data
+        self.dataPlot = []
+        self.dataSave = []
+
+        #figure
+        self.ax = fig.add_subplot(111)
+        self.getPlotFormat()
+
+        #reading data
+        self.readData = bytearray(4)
+
+        #thread
+        self.thread = None
+
+    def append(self, serialData):
         #save the Rsensor value in both plotdata list and savedata list
-        savedata.append([SerialData, datetime.now().strftime("%H:%M:%S.%f")])
-        plotdata.append(SerialData)
+        self.dataPlot.append(serialData)
+        self.dataSave.append([serialData, datetime.now().strftime("%H:%M:%S.%f")])
 
-        #Fix the list size to certain value
-        plotdata = plotdata[-50:]
+        #fix the list size to certain value
+        self.dataPlot = self.dataPlot[-100:]
+
+    def readThread(self):
+        #main thread handles plotting and other works
+        #while the second thread will be responsible for reading serial data
+        #buffer time
+        time.sleep(1.0)
+
+        self.ser.reset_input_buffer()
+
+        #read data
+        while self.isConnected:
+            self.ser.readinto(self.readData)
+            self.isReceiving = True
+
+    def readStart(self):
+        if self.thread == None:
+            self.thread = Thread(target = self.readThread)
+            self.thread.start()
+
+            while self.isReceiving != True:
+                time.sleep(0.1)
+
+    def readLine(self):
+        serialData, = struct.unpack('f', self.readData) #'f' for float data type byte
+
+        self.append(serialData)
+
+    def animate(self, i):
+        self.readLine()
 
         #clear last data frame
-        ax.clear()
+        self.ax.clear()
 
         #plot new data frame
-        self.getPlotFormat()
-        ax.plot(plotdata)
+        self.ax.plot(self.dataPlot)
 
     def getPlotFormat(self):
-        ax.set_ylim([0,100]) #change to 2,13 for strain sensor
-        ax.set_ylabel('Rsensor')
+        self.ax.set_ylim([0,100]) #change to 2,13 for strain sensor
+        self.ax.set_ylabel('Rsensor')
 
-#set serial connection
-OS = platform.system()
+    def save(self):
+        #save data to csv
+        dataFile = pd.DataFrame(self.dataSave, columns = ['Rsensor', 'Time'])
+        dataFile.to_csv(self.fileName, index = False)
 
-if OS == 'Windows':
-    PortBase = "COM"
-elif OS == 'Darwin':
-    PortBase = '/ev/tty.usbmodem'
-else:
-    print("Not supported OS")
+    def close(self):
+        self.isConnected = False
 
-print("Type in your Port Number")
-print("ex) if COM3, type in 3")
-PortName = PortBase + input()
-BaudRate = 9600
+        self.thread.join()
 
-Arduino = serial.Serial(PortName, BaudRate)
+        #disconnect serial
+        self.ser.flush()
+        self.ser.close()
 
-#get File Name
+        self.save()
 
-print("Type in the desired name of the .csv data file")
-print("ex) 0001")
-print("If there is a csv file with same name, the original file will be replaced!")
-FileName = input() + ".csv"
+def main():
+    #set serial connection
+    OS = platform.system()
 
-#close the plot when the user wants to
-print("You may close the plot window to end the program and save the data")
-print("You will need to change the cell format of Time to 'hh:mm:ss.000'")
+    if OS == 'Windows':
+        PortBase = "COM"
+    elif OS == 'Darwin':
+        PortBase = '/ev/tty.usbmodem'
+    else:
+        print("Not supported OS")
 
-#data to save in .csv file
-dataSave = []
+    print("Type in your Port Number")
+    print("ex) if COM3, type in 3")
+    PortName = PortBase + input()
 
-#real time plotting
-dataPlot = []
+    #get File Name
+    print("Type in the desired name of the .csv data file")
+    print("ex) 0001")
+    print("If there is a csv file with same name, the original file will be replaced!")
+    FileName = input() + ".csv"
 
-fig = plt.figure()
-ax = fig.add_subplot(111)
+    #close the plot when the user wants to
+    print("You may close the plot window to end the program and save the data")
+    print("You will need to change the cell format of Time to 'hh:mm:ss.000'")
 
-plot_object = RealTimePlot()
+    #create figure
+    fig = plt.figure()
 
-ani = animation.FuncAnimation(fig, plot_object.animate, frames = 100, fargs=(dataPlot, Arduino, dataSave), interval = 50, repeat = True)
+    #create object
+    Arduino = RealTimePlot(PortName, FileName, fig)
+    Arduino.readStart()
 
-plt.show()
+    #real time plotting with loop
+    ani = animation.FuncAnimation(fig, Arduino.animate, frames = 100, interval = 10, repeat = True)
 
-#save data to .csv file
-columnNames = ['Rsensor', 'Time']
+    plt.show()
 
-dataFile = pd.DataFrame(dataSave, columns = columnNames)
-dataFile.to_csv(FileName, index = False)
+    #close the serial connection
+    Arduino.close()
 
-#close the serial connection
-Arduino.close()
+if __name__ == '__main__':
+    main()
